@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Larry</title>
+<meta name="description" content="DJ Larry: hip hop e breaking no vinil. Sarandi-PR, Maringá e região. Eventos, batalhas, oficinas e projetos culturais.">
+<meta property="og:title" content="DJ Larry">
+<meta property="og:description" content="Hip hop e breaking no vinil. Sarandi-PR, Maringá e região.">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="a/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: one huge record drawn only in hairlines, half off the screen. The content sits on the
+   record itself; scrolling turns the record and carries the next block into the reading spot. */
+:root {
+  --vinil: #0b0b0d;
+  --papel: #f2efe8;
+  --cinza: #8f8a82;
+  --coral: #ff6f61;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --gutter: clamp(18px, 4vw, 48px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html { background: var(--vinil); }
+body { margin: 0; background: var(--vinil); color: var(--papel); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+img, video { display: block; max-width: 100%; }
+a { color: inherit; }
+h1, h2 { font-family: var(--display); font-weight: 900; text-transform: uppercase; letter-spacing: -0.035em; line-height: 0.98; margin: 0; text-wrap: balance; font-size: clamp(40px, 5.8vw, 96px); }
+p { margin: 0; }
+.hit { color: var(--coral); }
+:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; border-radius: 4px; }
+
+header { position: fixed; inset: 0 0 auto 0; z-index: 30; display: flex; justify-content: space-between; align-items: center; padding: 16px var(--gutter); }
+header .logo { width: 96px; }
+header .dm { font-size: 13px; color: var(--cinza); text-decoration: none; transition: color 200ms ease; }
+@media (hover: hover) and (pointer: fine) { header .dm:hover { color: var(--papel); } }
+
+
+/* ---------- full-bleed photos, one per track ---------- */
+.fundo { position: fixed; inset: 0; z-index: 0; background: var(--vinil); }
+.ft { position: absolute; inset: 0; opacity: 0; transition: opacity 800ms ease; transform-origin: 80vw 50%; will-change: transform; }
+@media (max-width: 820px) { .ft { transform-origin: 50vw 94%; } }
+.ft.on { opacity: 1; }
+.ft img, .ft video { width: 100%; height: 100%; object-fit: cover; }
+
+.ft.recorte { background: transparent; }
+.ft.recorte img { position: absolute; right: -6vw; top: -14svh; bottom: auto; width: auto; height: 142svh; max-width: none; object-fit: contain; }
+@media (max-width: 820px) { .ft.recorte img { right: -34vw; top: 30svh; height: 96svh; } }
+.sombra { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(11,11,13,.86) 0, rgba(11,11,13,.55) 40vw, rgba(11,11,13,.1) 72vw); }
+@media (max-width: 820px) { .sombra { background: linear-gradient(rgba(11,11,13,.45), rgba(11,11,13,.72) 42%, rgba(11,11,13,.3) 100%); } }
+.palco { z-index: 2; }
+
+/* ---------- map: big, draggable, cities clickable ---------- */
+.mapa-selo {
+  position: absolute; left: 50%; top: 50%; width: calc(var(--d) * .38); aspect-ratio: 1040 / 720;
+  transform: translate(-60%, -50%) scale(.94); opacity: 0; pointer-events: none;
+  transition: opacity 500ms ease, transform 700ms var(--ease-out);
+}
+.mapa-selo.on { opacity: 1; transform: translate(-60%, -50%); pointer-events: auto; }
+.mapa-selo::before { content: ""; position: absolute; inset: -14%; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(11,11,13,.9) 50%, rgba(11,11,13,0) 100%); pointer-events: none; }
+.mapa-vp { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none;
+  -webkit-mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 70%, transparent 100%); mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 70%, transparent 100%); }
+.mapa-vp.pega { cursor: grabbing; }
+.mapa-vp svg { width: 100%; height: 100%; overflow: visible; }
+#mapaG { transition: transform 450ms var(--ease-out); }
+.mapa-vp.pega #mapaG { transition: none; }
+.mapa-selo .uf { fill: rgba(242,239,232,.05); stroke: var(--papel); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.pin { cursor: pointer; opacity: 0; transition: opacity 300ms ease; outline: none; }
+.mapa-selo.on .pin { opacity: 1; transition-delay: calc(250ms + var(--i) * 60ms); }
+.pin circle { fill: var(--coral); stroke: var(--vinil); }
+.pin .halo { fill: transparent; stroke: none; }
+.pin text { font-family: var(--body); font-weight: 600; fill: var(--papel); pointer-events: none; }
+.pin.ativo circle:not(.halo) { fill: var(--papel); }
+.pin.ativo .halo { fill: rgba(255,111,97,.25); }
+.pin:focus-visible .halo { stroke: var(--coral); stroke-width: 3; }
+.mapa-ctrl { position: absolute; right: 6%; bottom: 10%; display: grid; gap: 6px; z-index: 2; }
+.mapa-ctrl button { width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; font: 600 20px/1 var(--body); background: rgba(242,239,232,.12); color: var(--papel); backdrop-filter: blur(6px); transition: background-color 200ms ease, transform 160ms var(--ease-out); }
+.mapa-ctrl button:active { transform: scale(0.95); }
+@media (hover: hover) and (pointer: fine) { .mapa-ctrl button:hover { background: rgba(242,239,232,.24); } }
+.mapa-card { position: absolute; left: 8%; bottom: 8%; z-index: 2; display: grid; gap: 2px; padding: 12px 16px; border-radius: 10px; background: rgba(11,11,13,.82); box-shadow: inset 0 0 0 1px rgba(242,239,232,.12); font-size: 14px; }
+.mapa-card b { font-weight: 600; color: var(--coral); }
+.mapa-card span { color: var(--cinza); font-size: 13px; }
+.mapa-card strong { font-weight: 600; color: var(--papel); font-size: 15px; max-width: 30ch; }
+.mapa-card { max-width: min(360px, 80vw); }
+.selo-logo { transition: opacity 400ms ease; }
+.selo-logo .nevoa, .selo-logo .traco { transform-origin: 50% 50%; }
+.selo-logo.fora { opacity: 0; }
+@media (max-width: 820px) {
+  .mapa-selo { width: 100vw; transform: translate(-50%, -104%) scale(.94); }
+  .mapa-selo.on { transform: translate(-50%, -104%); }
+}
+.selo-logo { position: absolute; left: 50%; top: 50%; width: calc(var(--d) * .2); transform: translate(-50%, -50%); will-change: transform, opacity; }
+@media (max-width: 820px) { .selo-logo { width: calc(var(--d) * .14); } }
+
+
+/* ---------- block components ---------- */
+.btn { display: inline-flex; align-items: center; gap: 10px; font: 600 15px/1 var(--body); padding: 15px 20px; border-radius: 999px; border: 0; cursor: pointer; text-decoration: none; background: var(--papel); color: var(--vinil); transition: transform 160ms var(--ease-out), background-color 200ms ease, color 200ms ease; }
+.btn:active { transform: scale(0.97); }
+.btn.coral { background: var(--coral); }
+.btn.vidro { background: rgba(242,239,232,.1); color: var(--papel); box-shadow: inset 0 0 0 1px rgba(242,239,232,.3); backdrop-filter: blur(8px); }
+.btn svg { width: 18px; height: 18px; }
+@media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--papel); color: var(--vinil); } .btn.coral:hover { background: var(--papel); } }
+.acoes { display: flex !important; flex-wrap: wrap; gap: 12px; padding-top: 4px; }
+.estilos { display: flex !important; flex-wrap: wrap; gap: 8px; }
+.estilos button { font: 700 clamp(13px, 1.1vw, 16px)/1 var(--display); text-transform: uppercase; letter-spacing: -0.01em; padding: 14px 16px; border-radius: 6px; border: 0; cursor: pointer; color: var(--papel); background: rgba(242,239,232,.1); box-shadow: inset 0 0 0 1px rgba(242,239,232,.18); transition: background-color 200ms ease, color 200ms ease, transform 160ms var(--ease-out); display: inline-flex; align-items: baseline; gap: 8px; }
+.estilos button:active { transform: scale(0.97); }
+.estilos button[aria-pressed="true"] { background: var(--papel); color: var(--vinil); box-shadow: none; }
+.estilos button.foco { background: var(--coral); color: var(--vinil); box-shadow: none; font-size: clamp(15px, 1.4vw, 20px); padding: 16px 20px; }
+.estilos button.foco[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--papel); }
+.estilos small { font: 600 11px/1 var(--body); text-transform: none; letter-spacing: 0; opacity: .75; }
+@media (hover: hover) and (pointer: fine) { .estilos button:not([aria-pressed="true"]):not(.foco):hover { background: rgba(242,239,232,.2); } }
+#estiloTxt { transition: opacity 200ms ease, filter 200ms ease; }
+#estiloTxt.troca { opacity: 0; filter: blur(3px); }
+.cards { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.card { display: grid; gap: 6px; padding: 16px; border-radius: 8px; background: rgba(11,11,13,.55); box-shadow: inset 0 0 0 1px rgba(242,239,232,.14); font-size: 13.5px; line-height: 1.45; color: var(--cinza); backdrop-filter: blur(8px); }
+.card b { font: 700 clamp(13px, 1.1vw, 16px)/1.1 var(--display); text-transform: uppercase; color: var(--papel); }
+.card:first-child { box-shadow: inset 0 0 0 1px var(--coral); }
+.card:first-child b { color: var(--coral); }
+@media (max-width: 820px) { .cards { grid-template-columns: 1fr; gap: 6px; } .card { padding: 12px 14px; } }
+.elementos { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.elementos > span { display: grid; gap: 4px; padding: 14px; border-radius: 8px; background: rgba(11,11,13,.55); box-shadow: inset 0 0 0 1px rgba(242,239,232,.14); font-size: 13px; color: var(--cinza); backdrop-filter: blur(8px); }
+.elementos b { font: 700 clamp(12px, 1.1vw, 16px)/1.1 var(--display); text-transform: uppercase; color: var(--papel); }
+.elementos .dj { background: var(--coral); box-shadow: none; color: var(--vinil); }
+.elementos .dj b { color: var(--vinil); }
+.servicos { display: flex !important; flex-wrap: wrap; gap: 8px; }
+.servicos span { font-size: 14px; font-weight: 600; padding: 9px 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(242,239,232,.3); }
+.bloco.estreito { --w: min(560px, 40vw); }
+@media (max-width: 820px) { .bloco.estreito { --w: min(340px, calc(100vw - 2 * var(--gutter))); } }
+
+
+.selo-play { position: absolute; left: 50%; top: 50%; width: calc(var(--d) * .1); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; align-content: center; gap: 4px;
+  background: var(--coral); color: var(--vinil); text-decoration: none; font: 600 13px/1 var(--body);
+  transform: translate(-50%, -50%) scale(.85); opacity: 0; pointer-events: none;
+  transition: opacity 400ms ease, transform 500ms var(--ease-out); box-shadow: 0 0 0 12px rgba(255,111,97,.18), 0 0 0 26px rgba(255,111,97,.08); }
+.selo-play svg { width: 34%; height: auto; }
+.selo-play.on { opacity: 1; transform: translate(-50%, -50%); pointer-events: auto; }
+.selo-play:active { transform: translate(-50%, -50%) scale(.97); }
+@media (max-width: 820px) { .selo-play { width: calc(var(--d) * .07); top: calc(50% - var(--d) * .06); } }
+.midias { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 560px; }
+.midia { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; text-decoration: none; color: var(--papel); background: rgba(11,11,13,.55); box-shadow: inset 0 0 0 1px rgba(242,239,232,.16); backdrop-filter: blur(8px); transition: background-color 200ms ease, transform 160ms var(--ease-out); font-size: 13px; }
+.midia:active { transform: scale(0.98); }
+.midia b { display: block; font: 700 15px/1.1 var(--display); text-transform: uppercase; margin-bottom: 3px; }
+.midia > span:last-child { color: var(--cinza); }
+.midia .ic { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--coral); color: var(--vinil); }
+.midia .ic svg { width: 20px; height: 20px; }
+@media (hover: hover) and (pointer: fine) { .midia:hover { background: rgba(242,239,232,.12); } }
+@media (max-width: 820px) { .midias { grid-template-columns: 1fr; } }
+
+
+.linha-tempo { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; position: relative; }
+.linha-tempo::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1px; background: rgba(242,239,232,.35); }
+.linha-tempo li { position: relative; padding: 26px 12px 0 0; display: grid; gap: 4px; font-size: 13px; line-height: 1.4; color: rgba(242,239,232,.8); opacity: 0; transform: translateY(10px); transition: opacity 400ms ease, transform 500ms var(--ease-out); }
+.linha-tempo li::before { content: ""; position: absolute; left: 0; top: 0; width: 15px; height: 15px; border-radius: 50%; background: var(--vinil); box-shadow: inset 0 0 0 1.5px var(--papel); }
+.linha-tempo li b { font: 700 clamp(15px, 1.4vw, 20px)/1 var(--display); color: var(--papel); letter-spacing: -0.02em; }
+.linha-tempo li.agora::before { background: radial-gradient(circle, var(--vinil) 0 2px, var(--coral) 2.5px 5px, var(--vinil) 5.5px); box-shadow: 0 0 0 1.5px var(--coral); }
+.linha-tempo li.agora b { color: var(--coral); }
+.linha-tempo li.agora span { color: var(--papel); }
+.ln.on .linha-tempo li { opacity: 1; transform: none; transition-delay: calc(700ms + var(--i) * 110ms); }
+@media (max-width: 820px) {
+  .linha-tempo { grid-template-columns: 1fr; gap: 8px; padding-left: 22px; }
+  .linha-tempo::before { left: 7px; right: auto; top: 6px; bottom: 6px; width: 1px; height: auto; }
+  .linha-tempo li { padding: 0; grid-template-columns: 46px 1fr; align-items: baseline; font-size: 13px; }
+  .linha-tempo li::before { left: -22px; top: 2px; width: 13px; height: 13px; }
+  .linha-tempo li b { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .linha-tempo li { transform: none; } }
+
+
+/* logo being sprayed on the first screen: jerky left-to-right reveal with overspray, then it shrinks into place */
+.selo-logo img { position: relative; display: block; width: 100%; }
+.selo-logo .nevoa { position: absolute; inset: 0; filter: blur(9px); opacity: 0; }
+.selo-logo .nevoa img { width: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .selo-logo.pichando .traco { animation: picha 1500ms 500ms both, encolhe 800ms 2100ms var(--ease-out) both; animation-timing-function: steps(1, end), var(--ease-out); }
+  .selo-logo.pichando .nevoa { animation: some-nevoa 900ms 1900ms ease both, encolhe 800ms 2100ms var(--ease-out) both; }
+  .selo-logo.pichando .nevoa img { animation: nevoa 1500ms 450ms both; animation-timing-function: steps(1, end); }
+}
+@keyframes picha {
+  0% { clip-path: inset(-10% 100% -10% -4%); }
+  7% { clip-path: inset(-10% 93% -10% -4%); }
+  12% { clip-path: inset(-10% 86% -10% -4%); }
+  19% { clip-path: inset(-10% 79% -10% -4%); }
+  25% { clip-path: inset(-10% 72% -10% -4%); }
+  33% { clip-path: inset(-10% 63% -10% -4%); }
+  39% { clip-path: inset(-10% 57% -10% -4%); }
+  46% { clip-path: inset(-10% 48% -10% -4%); }
+  55% { clip-path: inset(-10% 39% -10% -4%); }
+  61% { clip-path: inset(-10% 33% -10% -4%); }
+  70% { clip-path: inset(-10% 24% -10% -4%); }
+  77% { clip-path: inset(-10% 17% -10% -4%); }
+  86% { clip-path: inset(-10% 9% -10% -4%); }
+  93% { clip-path: inset(-10% 4% -10% -4%); }
+  100% { clip-path: inset(-10% 0% -10% -4%); }
+}
+@keyframes nevoa {
+  0% { clip-path: inset(-20% 94% -20% -8%); }
+  7% { clip-path: inset(-20% 87% -20% -8%); }
+  12% { clip-path: inset(-20% 80% -20% -8%); }
+  19% { clip-path: inset(-20% 73% -20% -8%); }
+  25% { clip-path: inset(-20% 66% -20% -8%); }
+  33% { clip-path: inset(-20% 57% -20% -8%); }
+  39% { clip-path: inset(-20% 51% -20% -8%); }
+  46% { clip-path: inset(-20% 42% -20% -8%); }
+  55% { clip-path: inset(-20% 33% -20% -8%); }
+  61% { clip-path: inset(-20% 27% -20% -8%); }
+  70% { clip-path: inset(-20% 18% -20% -8%); }
+  77% { clip-path: inset(-20% 11% -20% -8%); }
+  86% { clip-path: inset(-20% 3% -20% -8%); }
+  93% { clip-path: inset(-20% 0% -20% -8%); }
+  100% { clip-path: inset(-20% 0% -20% -8%); }
+}
+@keyframes some-nevoa { 0% { opacity: .65; } 100% { opacity: 0; } }
+@keyframes encolhe { from { transform: scale(1.75); } to { transform: scale(1); } }
+.selo-logo.pichando .traco, .selo-logo.pichando .nevoa { transform: scale(1.75); }
+@media (prefers-reduced-motion: reduce) { .selo-logo.pichando .traco, .selo-logo.pichando .nevoa { transform: none; } }
+
+/* ---------- the side of the record ---------- */
+.palco { position: fixed; inset: 0; overflow: hidden; }
+
+.disco {
+  --d: max(136vw, 150svh);
+  position: absolute; width: var(--d); height: var(--d);
+  left: calc(80vw - var(--d) / 2); top: calc(50svh - var(--d) / 2);
+  touch-action: pan-y; cursor: grab;
+}
+@media (max-width: 820px) {
+  .disco { --d: max(200svh, 380vw); left: calc(50vw - var(--d) / 2); top: calc(94svh - var(--d) / 2); }
+}
+.disco.pega { cursor: grabbing; }
+.sulcos { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; will-change: transform; backface-visibility: hidden; pointer-events: none; user-select: none; }
+.sulcos circle { fill: none; }
+
+/* blocks ride on the record: each sits on its own spoke and is upright only in the reading spot */
+.raio { position: absolute; left: 50%; top: 50%; width: 0; height: 0; will-change: transform; backface-visibility: hidden; }
+.bloco {
+  position: absolute; width: var(--w); left: calc(var(--r) * -1 - var(--w) / 2); top: 0;
+  transform: translateY(-50%); display: grid; gap: 18px;
+  --w: min(720px, 54vw); --r: calc(var(--d) * .32);
+}
+@media (max-width: 820px) {
+  .raio { transform-origin: 0 0; }
+  .bloco { --w: min(340px, calc(100vw - 2 * var(--gutter))); --r: calc(var(--d) * .28); left: calc(var(--w) / -2); top: calc(var(--r) * -1); }
+}
+.bloco[inert] { pointer-events: none; }
+.foto { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 3px; background: var(--coral); }
+.foto img, .foto video { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.45) brightness(1.05); mix-blend-mode: multiply; }
+.foto::after { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(11,11,13,.5) 0 1.4px, transparent 1.9px); background-size: 8px 8px; mix-blend-mode: multiply; pointer-events: none; }
+.bloco .tag { width: 78%; }
+.bloco p { font-size: clamp(16px, 1.4vw, 20px); color: var(--papel); max-width: 40ch; font-weight: 500; }
+.lista { line-height: 1.7; }
+.lista b { color: var(--coral); font-weight: 600; }
+.ligacoes { display: flex; flex-wrap: wrap; gap: 20px; }
+.sutil { all: unset; cursor: pointer; font-size: clamp(16px, 1.4vw, 19px); font-weight: 600; color: var(--papel); border-bottom: 1px solid var(--coral); padding-bottom: 2px; transition: color 200ms ease; }
+.sutil:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .sutil:hover { color: var(--coral); } }
+
+
+/* lines: each gesture reveals one, sliding up out of its own mask */
+.ln { display: block; overflow: hidden; padding-bottom: .06em; }
+.ln > span { display: block; transform: translateY(110%); opacity: 0; transition: transform 620ms var(--ease-out), opacity 300ms ease; }
+.ln.on > span { transform: none; opacity: 1; }
+p.ln > span, div.ln > span { transform: translateY(40%); }
+.ligacoes { display: flex !important; flex-wrap: wrap; gap: 20px; }
+.palco { touch-action: none; }
+.dica { position: fixed; right: calc(var(--gutter) + 130px); bottom: 22px; z-index: 20; font-size: 13px; color: var(--cinza); display: flex; align-items: center; gap: 8px; transition: opacity 300ms ease; }
+.dica::after { content: ""; width: 1px; height: 22px; background: linear-gradient(var(--cinza), transparent); animation: dica 1600ms var(--ease-out) infinite; transform-origin: top; }
+@keyframes dica { from { transform: scaleY(0); } 60% { transform: scaleY(1); } to { transform: scaleY(1); opacity: 0; } }
+.dica.some { opacity: 0; }
+@media (max-width: 820px) { .dica { left: 50%; right: auto; transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ln > span, p.ln > span, div.ln > span { transform: none; transition: opacity 250ms ease; } .dica::after { animation: none; } }
+.indicador { position: fixed; left: var(--gutter); bottom: 24px; z-index: 20; display: flex; gap: 10px; align-items: center; }
+@media (max-width: 820px) { .indicador { left: 50%; transform: translateX(-50%); bottom: auto; top: 68px; } }
+.indicador button { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1.5px solid var(--papel); background: transparent; opacity: .35; cursor: pointer; transition: opacity 200ms ease, width 200ms var(--ease-out), height 200ms var(--ease-out); }
+.indicador button:active { transform: scale(0.92); }
+.indicador button[aria-current="true"] { width: 22px; height: 22px; opacity: 1; background: radial-gradient(circle, var(--vinil) 0 2px, var(--coral) 3px 5px, var(--vinil) 6px); }
+@media (hover: hover) and (pointer: fine) { .indicador button:hover { opacity: .8; } }
+
+.toast { position: fixed; left: 50%; bottom: 60px; z-index: 40; transform: translate(-50%, 20px); opacity: 0; background: var(--papel); color: var(--vinil); font-weight: 600; font-size: 14px; padding: 12px 18px; border-radius: 10px; transition: transform 400ms var(--ease-out), opacity 300ms ease; pointer-events: none; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+
+/* ---------- clean pass: two quiet colours (vinil, papel), one loud (coral) ---------- */
+header { pointer-events: none; }
+header > * { pointer-events: auto; }
+header .menu { display: flex; gap: 28px; font-size: 14px; font-weight: 500; }
+header .menu a { text-decoration: none; color: var(--fg, var(--papel)); opacity: .8; transition: opacity 200ms ease, color 400ms ease; }
+@media (hover: hover) and (pointer: fine) { header .menu a:hover { opacity: 1; } }
+header .pilula { text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 999px; color: var(--fg, var(--papel)); box-shadow: inset 0 0 0 1.5px currentColor; transition: color 400ms ease, background-color 200ms ease, transform 160ms var(--ease-out); }
+header .pilula:active { transform: scale(0.97); }
+header .logo { transition: filter 400ms ease; }
+@media (max-width: 960px) { header .menu { display: none; } }
+header .dm { display: none; }
+
+.ft.solido { background: var(--c); }
+.sombra { transition: opacity 600ms ease; }
+body[data-tema="coral"] .sombra, body[data-tema="papel"] .sombra { opacity: 0; }
+.sulcos { transition: filter 600ms ease, opacity 600ms ease; }
+body[data-tema="papel"] .sulcos { filter: invert(1); opacity: .55; }
+body[data-tema="coral"] .sulcos { opacity: .8; }
+body[data-tema="papel"] { --fg: var(--vinil); }
+body[data-tema="papel"] header .logo, body[data-tema="papel"] .selo-logo img { filter: invert(1); }
+body[data-tema="papel"] .indicador button { border-color: var(--vinil); }
+body[data-tema="papel"] .indicador button[aria-current="true"] { background: radial-gradient(circle, var(--papel) 0 2px, var(--coral) 3px 5px, var(--vinil) 6px); }
+.selo-logo img { transition: filter 400ms ease; }
+
+/* big solid-colour tracks */
+.bloco.grande h2 { font-size: clamp(44px, 6vw, 100px); line-height: .94; }
+body .bloco.grande { --w: min(760px, 52vw); }
+.bloco[aria-labelledby="t2"] h2, .bloco[aria-labelledby="t6"] h2 { color: var(--papel); }
+.bloco[aria-labelledby="t2"] .hit, .bloco[aria-labelledby="t6"] .hit { color: var(--vinil); }
+.bloco[aria-labelledby="t2"] p, .bloco[aria-labelledby="t6"] p { color: var(--vinil); font-weight: 500; }
+.bloco[aria-labelledby="t3"] h2 { color: var(--vinil); }
+.bloco[aria-labelledby="t3"] .hit { color: #e2503f; }
+
+/* genres as clean pills on coral */
+.bloco[aria-labelledby="t2"] .estilos button { background: var(--papel); color: var(--vinil); box-shadow: none; border-radius: 999px; padding: 14px 20px; font-size: clamp(13px, 1.1vw, 16px); }
+.bloco[aria-labelledby="t2"] .estilos button[aria-pressed="true"] { background: var(--vinil); color: var(--papel); box-shadow: none; }
+.bloco[aria-labelledby="t2"] .estilos button.foco { background: var(--vinil); color: var(--coral); font-size: clamp(15px, 1.4vw, 20px); padding: 16px 24px; }
+.bloco[aria-labelledby="t2"] .estilos button.foco[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--papel); }
+@media (hover: hover) and (pointer: fine) { .bloco[aria-labelledby="t2"] .estilos button:not([aria-pressed="true"]):not(.foco):hover { background: #fff; } }
+
+/* arch cards on papel */
+.arcos { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(12px, 1.6vw, 22px); max-width: 640px; }
+.arco { display: grid; gap: 6px; color: var(--vinil); min-width: 0; }
+.arco .forma { display: block; width: 100%; min-width: 0; aspect-ratio: 3 / 4; overflow: hidden; background: var(--coral); }
+.arco img { min-width: 0; max-width: 100%; }
+.arco .f1 { border-radius: 999px 999px 18px 18px; }
+.arco .f2 { border-radius: 999px; }
+.arco .f3 { border-radius: 18px 18px 999px 999px; }
+.arco img { width: 100%; height: 100%; object-fit: cover; }
+.arco b { font: 700 clamp(13px, 1.1vw, 16px)/1.1 var(--display); text-transform: uppercase; margin-top: 6px; }
+.arco small { font-size: 13px; line-height: 1.4; color: #4a4741; }
+
+/* sets: two solid panels */
+.paineis { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 600px; }
+.painel { position: relative; display: grid; gap: 6px; padding: 22px; min-height: 150px; align-content: end; border-radius: 18px; text-decoration: none; transition: transform 160ms var(--ease-out); }
+.painel:active { transform: scale(0.98); }
+.painel small { font-size: 13px; font-weight: 600; opacity: .75; }
+.painel b { font: 900 clamp(22px, 2.2vw, 34px)/1 var(--display); text-transform: uppercase; letter-spacing: -0.03em; }
+.painel .seta { position: absolute; top: 16px; right: 20px; font-size: 26px; transition: transform 200ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .painel:hover .seta { transform: translate(3px, -3px); } }
+.painel.coral { background: var(--coral); color: var(--vinil); }
+.painel.papel { background: var(--papel); color: var(--vinil); }
+
+/* contact on coral */
+.bloco[aria-labelledby="t6"] .servicos span { box-shadow: inset 0 0 0 1.5px var(--vinil); color: var(--vinil); }
+.bloco[aria-labelledby="t6"] .btn.coral { background: var(--vinil); color: var(--papel); }
+.bloco[aria-labelledby="t6"] .btn.vidro { background: transparent; color: var(--vinil); box-shadow: inset 0 0 0 1.5px var(--vinil); backdrop-filter: none; }
+@media (hover: hover) and (pointer: fine) { .bloco[aria-labelledby="t6"] .btn.coral:hover { background: var(--papel); color: var(--vinil); } .bloco[aria-labelledby="t6"] .btn.vidro:hover { background: var(--vinil); color: var(--papel); } }
+
+/* rotating badge, turns with the record */
+.selo-giro { position: fixed; right: clamp(20px, 3vw, 44px); bottom: clamp(20px, 3vw, 40px); z-index: 25; width: 112px; height: 112px; display: grid; place-items: center; text-decoration: none; color: var(--fg, var(--papel)); transition: color 400ms ease, transform 160ms var(--ease-out); }
+.selo-giro svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; will-change: transform; }
+.selo-giro text { font: 700 10.5px var(--display); letter-spacing: .18em; fill: currentColor; }
+.selo-giro .seta { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--coral); color: var(--vinil); font-size: 20px; transition: background-color 400ms ease; }
+body[data-tema="coral"] .selo-giro .seta { background: var(--vinil); color: var(--coral); }
+.selo-giro:active { transform: scale(0.96); }
+@media (max-width: 820px) { .selo-giro { display: none; } }
+
+@media (max-width: 820px) {
+  .bloco.grande h2 { font-size: clamp(30px, 8.6vw, 42px); }
+  body .bloco.grande { --w: calc(100vw - 2 * var(--gutter)); }
+  .arcos { gap: 10px; }
+  .arco small { display: none; }
+  .arco b { font-size: 10.5px; letter-spacing: -0.02em; }
+  .paineis { gap: 10px; }
+  .painel { min-height: 112px; padding: 16px; border-radius: 16px; }
+  .painel b { font-size: 22px; }
+}
+/* ---------- phones: no header (the logo is already on the record), blocks centred in the free band ---------- */
+@media (max-width: 820px) {
+  header { display: none; }
+  .indicador { top: 22px !important; }
+  h1, h2 { font-size: clamp(29px, 8.8vw, 40px); }
+  .bloco, .bloco.estreito { --w: calc(100vw - 2 * var(--gutter)); left: calc(var(--w) / -2); top: calc(47svh - 10px - 94svh); transform: translateY(-50%); gap: 20px; }
+  .bloco.estreito { top: calc(76px - 94svh); transform: none; }
+  .bloco h1, .bloco h2 { margin-bottom: 2px; }
+  .bloco p { font-size: 15.5px; line-height: 1.6; }
+  .selo-logo { width: min(44vw, 190px); }
+  .dica { display: none; }
+  .estilos { gap: 10px !important; }
+  .estilos button { padding: 13px 14px; }
+  .estilos button.foco { padding: 14px 16px; }
+  .cards { gap: 10px !important; }
+  .card { font-size: 13.5px; padding: 14px 16px; }
+  .linha-tempo { gap: 12px !important; }
+  .linha-tempo li { grid-template-columns: 56px 1fr; font-size: 13px; }
+  .linha-tempo li b { font-size: 15px; }
+  .midias { gap: 10px !important; }
+  .midia { padding: 12px 14px; }
+  .acoes { gap: 10px !important; }
+  .acoes .btn { padding: 14px 18px; font-size: 14.5px; }
+  .servicos { gap: 8px !important; }
+  .mapa-card { left: 4%; bottom: 4%; padding: 10px 12px; }
+  .mapa-card strong { font-size: 13.5px; }
+  .mapa-ctrl { right: 4%; bottom: 4%; }
+  .selo-play { width: min(26vw, 110px); }
+}
+@media (max-width: 820px) and (max-height: 700px) {
+  h1, h2 { font-size: clamp(25px, 7.6vw, 32px); }
+  .bloco, .bloco.estreito { gap: 14px; }
+  .bloco p { font-size: 14px; }
+  .card { padding: 9px 12px; }
+  .card:not(:first-child) { font-size: 0; gap: 0; }
+  .card:not(:first-child) b { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <a href="#" data-ir="0" aria-label="DJ Larry, voltar ao início"><img class="logo" src="a/logo.png" alt=""></a>
+  <nav class="menu" aria-label="Seções">
+    <a href="#" data-ir="1">Som</a><a href="#" data-ir="3">Trajetória</a><a href="#" data-ir="4">Rodagem</a><a href="#" data-ir="5">Sets</a>
+  </nav>
+  <a class="pilula" href="https://instagram.com/djlarryvsn">Chamar na DM</a>
+</header>
+
+<div class="fundo" aria-hidden="true">
+  <div class="ft on recorte"><img src="b/retrato.webp" alt="" decoding="async"></div>
+  <div class="ft solido" style="--c:var(--coral)"></div>
+  <div class="ft solido" style="--c:var(--papel)"></div>
+  <div class="ft"><img src="b/hero.jpg" alt="" decoding="async" style="object-position:50% 28%"></div>
+  <div class="ft"><img src="b/fone.jpg" alt="" decoding="async" style="object-position:40% 40%"></div>
+  <div class="ft"><video src="b/loop.mp4" muted loop playsinline preload="auto"></video></div>
+  <div class="ft solido" style="--c:var(--coral)"></div>
+</div>
+<div class="sombra" aria-hidden="true"></div>
+<div class="palco">
+  <div class="disco" id="disco">
+    <img class="sulcos" id="sulcos" src="b/sulcos.webp" alt="" decoding="async">
+
+    <div class="raio"><section class="bloco" aria-labelledby="t1">
+      <h1 id="t1"><span class="ln"><span>Hip hop e breaking</span></span><span class="ln"><span class="hit">no vinil.</span></span></h1>
+      <p class="ln"><span>DJ Larry. Toco pra roda de breaking, batalha e festa de hip hop em Sarandi-PR, Maringá e região.</span></p>
+      <div class="ln"><span class="acoes">
+        <a class="btn coral" href="https://instagram.com/djlarryvsn">Chamar na DM</a>
+        <button class="btn vidro" type="button" data-ir="1">Ver os estilos</button>
+      </span></div>
+    </section></div>
+
+    <div class="raio"><section class="bloco grande" aria-labelledby="t2">
+      <h2 id="t2"><span class="ln"><span>Eu toco pra</span></span><span class="ln"><span class="hit">dançar.</span></span></h2>
+      <div class="ln"><span class="estilos" role="group" aria-label="Estilos">
+        <button type="button" data-e="0">Funk</button>
+        <button type="button" data-e="1">Soul</button>
+        <button type="button" data-e="2">Hip hop</button>
+        <button type="button" data-e="3" class="foco" aria-pressed="true">Breakbeats<small>o foco</small></button>
+        <button type="button" data-e="4">R&amp;B</button>
+      </span></div>
+    </section></div>
+
+    <div class="raio"><section class="bloco grande" aria-labelledby="t3">
+      <h2 id="t3"><span class="ln"><span>O toca-discos é</span></span><span class="ln"><span class="hit">instrumento.</span></span></h2>
+      <div class="ln"><span class="arcos">
+        <span class="arco"><span class="forma f1"><img src="b/olho.jpg" alt="Mão no vinil, de perto" decoding="async"></span><b>Scratch</b><small>O disco vai e volta na mão, no tempo da música.</small></span>
+        <span class="arco"><span class="forma f2"><img src="b/batalha.jpg" alt="DJ Larry tocando numa batalha" decoding="async"></span><b>Beat juggling</b><small>Dois discos iguais pra recriar a batida ao vivo.</small></span>
+        <span class="arco"><span class="forma f3"><img src="b/fone.jpg" alt="DJ Larry de fone, tocando num evento" decoding="async"></span><b>Turntablism</b><small>Tocar o toca-discos como instrumento.</small></span>
+      </span></div>
+    </section></div>
+
+    <div class="raio"><section class="bloco" aria-labelledby="t3b">
+      <h2 id="t3b"><span class="ln"><span>Do break</span></span><span class="ln"><span>pro <span class="hit">vinil.</span></span></span></h2>
+      <p class="ln"><span>Dançando desde 2010, tocando desde 2015. Até hoje sigo nas rodas e nos eventos de dança.</span></p>
+      <div class="ln"><ol class="linha-tempo"><li style="--i:0"><b>2010</b><span>Comecei a dançar break.</span></li><li style="--i:1"><b>2011</b><span>Entrei pra Vision Crew.</span></li><li style="--i:2"><b>2015</b><span>Primeiros sets no notebook, nos treinos de dança.</span></li><li style="--i:3"><b>2016</b><span>Primeiros eventos com o Bombox na Rua: rodas e batalhas.</span></li><li style="--i:4"><b>2017</b><span>Comecei a me profissionalizar como DJ.</span></li><li style="--i:5" class="agora"><b>2025</b><span>Chegou o toca-discos: scratch, beat juggling e turntablism.</span></li></ol></div>
+    </section></div>
+
+    <div class="raio"><section class="bloco estreito" aria-labelledby="t4">
+      <h2 id="t4"><span class="ln"><span>Já toquei</span></span><span class="ln"><span class="hit">por aqui.</span></span></h2>
+      <p class="ln"><span>Batalhas, festivais e campeonatos em 10 cidades do Paraná. Toque numa cidade pra ver o evento.</span></p>
+    </section></div>
+
+    <div class="raio"><section class="bloco" aria-labelledby="t5">
+      <h2 id="t5"><span class="ln"><span>O DJ é um dos</span></span><span class="ln"><span>pilares do <span class="hit">hip hop.</span></span></span></h2>
+      <p class="ln"><span>Eu estudo sempre pra manter a cultura na essência, através dos toca-discos. Vê e ouve um pouco:</span></p>
+      <div class="ln"><span class="paineis">
+        <a class="painel coral" href="https://www.youtube.com/watch?v=dPK9dVAwSo0"><small>YouTube</small><b>DJ session</b><span class="seta" aria-hidden="true">↗</span></a>
+        <a class="painel papel" href="https://soundcloud.com/djlarryvsn"><small>SoundCloud</small><b>Mixtape</b><span class="seta" aria-hidden="true">↗</span></a>
+      </span></div>
+    </section></div>
+
+    <div class="raio"><section class="bloco grande" aria-labelledby="t6">
+      <h2 id="t6"><span class="ln"><span>Bora fazer</span></span><span class="ln"><span class="hit">acontecer?</span></span></h2>
+      <div class="ln"><span class="servicos"><span>Eventos</span><span>Batalhas</span><span>Oficinas</span><span>Projetos culturais</span></span></div>
+      <div class="ln"><span class="acoes">
+        <a class="btn coral" href="https://instagram.com/djlarryvsn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          Chamar na DM
+        </a>
+        <button class="btn vidro" type="button" id="copiar">Copiar @djlarryvsn</button>
+      </span></div>
+    </section></div>
+<div class="mapa-selo" id="mapaSelo">
+      <div class="mapa-vp" id="mapaVp"><svg viewBox="-60 -40 1040 720" id="mapaSvg" aria-label="Mapa do Paraná com as cidades onde o DJ Larry já tocou"><g id="mapaG"><path class="uf" d="M356.3 2.7 L365.6 4.4 L381.3 15.4 L400.2 16.0 L405.7 23.4 L417.1 21.8 L431.5 26.1 L450.8 22.8 L463.4 23.7 L475.2 31.8 L496.8 38.3 L513.2 44.2 L529.3 53.5 L533.7 59.6 L538.5 66.1 L551.9 58.1 L567.0 60.6 L572.8 65.5 L582.0 65.2 L590.2 59.7 L597.1 66.2 L606.2 63.6 L611.6 67.0 L621.2 66.0 L631.1 62.5 L639.9 60.2 L645.1 60.9 L649.0 65.9 L658.2 74.9 L658.7 82.7 L665.1 85.4 L670.4 86.4 L673.5 89.8 L682.4 90.8 L686.0 97.6 L689.6 101.5 L693.7 111.7 L696.9 123.0 L695.4 128.8 L699.6 133.0 L699.5 135.9 L704.7 139.7 L700.7 141.7 L699.6 147.5 L697.4 151.9 L699.7 156.9 L699.9 162.4 L698.0 168.3 L698.8 171.5 L702.1 176.0 L703.6 178.0 L705.6 180.3 L706.7 187.4 L705.1 191.4 L705.5 198.3 L701.1 202.4 L699.9 203.6 L699.8 207.4 L703.8 208.8 L705.4 214.2 L709.6 216.7 L712.3 218.0 L713.3 220.6 L713.6 222.7 L716.0 228.6 L715.8 231.3 L717.9 231.8 L722.7 236.6 L723.9 240.0 L726.7 244.2 L732.1 245.1 L737.4 250.6 L735.2 259.4 L739.5 265.0 L742.1 268.7 L743.5 272.3 L751.5 278.3 L748.6 289.5 L750.9 290.6 L748.4 297.5 L747.6 300.1 L743.2 305.5 L741.2 311.4 L740.2 317.5 L739.9 321.8 L741.0 326.3 L741.2 330.2 L754.7 335.1 L759.4 330.7 L766.4 332.3 L771.6 331.9 L776.6 331.8 L778.2 326.4 L782.6 327.9 L786.9 329.7 L789.6 332.7 L796.0 330.9 L804.3 329.7 L808.2 328.3 L816.0 334.2 L820.5 332.9 L827.0 333.9 L829.1 332.5 L831.0 335.9 L835.7 332.0 L840.2 331.1 L844.0 334.3 L846.4 337.5 L849.1 339.6 L852.1 341.0 L851.9 344.8 L848.2 348.8 L844.1 357.6 L846.7 362.5 L844.7 364.9 L843.7 370.4 L844.1 374.8 L840.3 380.4 L841.7 386.0 L845.2 390.3 L849.6 396.4 L854.7 389.1 L865.0 379.4 L871.5 382.2 L876.1 386.8 L876.7 389.8 L882.4 384.7 L886.6 379.9 L890.4 380.8 L892.1 382.4 L894.0 386.6 L893.9 393.4 L897.6 400.3 L900.7 404.6 L896.3 410.1 L907.3 419.4 L911.4 417.9 L915.0 416.2 L917.5 414.8 L919.0 417.4 L909.5 428.1 L898.0 442.5 L887.4 453.7 L883.7 459.2 L881.3 466.8 L873.3 470.9 L862.6 480.6 L856.8 490.5 L848.3 510.0 L845.9 512.0 L844.1 516.9 L842.7 522.7 L839.6 530.9 L836.7 531.1 L834.3 529.4 L829.9 531.2 L789.3 531.3 L789.1 532.0 L785.9 535.1 L782.8 536.8 L776.6 537.1 L772.3 535.2 L768.0 535.2 L763.3 535.9 L758.6 535.7 L754.9 537.2 L751.1 539.1 L748.4 543.9 L746.3 546.1 L745.0 547.0 L742.8 549.4 L737.1 552.9 L733.5 556.0 L731.8 558.0 L725.7 557.9 L722.8 560.5 L715.5 563.7 L715.3 566.6 L711.3 569.3 L708.4 567.2 L706.8 568.9 L702.9 569.4 L698.4 567.2 L696.5 565.3 L693.3 564.5 L690.6 563.3 L689.4 561.4 L682.0 557.3 L679.0 552.9 L675.9 552.6 L672.2 551.2 L667.9 547.2 L667.5 544.4 L662.3 541.1 L657.7 538.5 L652.8 536.4 L647.4 542.6 L642.7 536.6 L638.7 538.5 L633.4 541.5 L628.8 542.8 L625.3 541.3 L620.3 538.3 L622.6 540.9 L617.4 545.4 L613.0 543.7 L608.8 540.7 L602.6 542.9 L598.9 549.5 L597.8 553.2 L595.1 552.7 L593.9 548.9 L587.3 544.5 L582.4 539.9 L578.5 537.7 L575.4 538.6 L567.6 540.5 L562.9 541.8 L567.1 542.9 L553.6 549.1 L546.7 562.2 L540.3 572.2 L528.7 573.4 L523.1 571.6 L518.3 578.6 L514.3 575.6 L507.0 571.2 L493.2 569.4 L490.2 576.7 L484.7 578.3 L479.4 580.3 L473.5 583.7 L469.0 587.0 L467.5 593.3 L464.5 595.8 L466.5 602.8 L469.4 605.5 L468.4 609.8 L468.3 613.1 L471.4 617.2 L474.5 621.8 L471.6 627.1 L470.1 630.6 L465.4 633.0 L458.9 634.1 L451.6 635.6 L449.2 643.5 L441.2 634.7 L437.0 629.9 L431.8 624.8 L419.0 625.1 L407.9 623.9 L394.5 624.8 L385.5 625.3 L375.3 624.1 L367.8 621.7 L362.5 619.6 L356.9 615.8 L352.8 612.7 L348.2 607.4 L340.6 604.0 L331.5 605.5 L325.7 604.8 L317.6 601.0 L311.4 601.2 L303.0 601.9 L296.1 598.8 L286.5 597.4 L279.8 597.3 L275.0 592.7 L264.1 587.8 L258.0 588.1 L247.5 587.4 L237.4 589.0 L227.2 587.8 L211.8 593.3 L206.2 589.2 L200.1 587.2 L191.3 580.1 L189.6 577.4 L183.9 573.8 L179.0 573.3 L176.1 572.6 L172.3 572.3 L160.0 579.0 L148.9 579.3 L144.4 575.0 L138.7 574.3 L135.7 571.3 L135.8 566.8 L134.0 564.0 L131.1 559.6 L127.6 556.7 L124.3 553.9 L123.0 549.8 L123.4 546.0 L123.4 541.2 L120.4 540.7 L118.3 539.1 L117.0 535.7 L113.6 533.7 L112.3 532.8 L111.6 530.7 L110.4 528.7 L108.9 524.0 L111.1 521.6 L110.0 520.1 L107.7 517.3 L110.5 515.2 L108.4 513.0 L108.5 510.1 L109.0 507.7 L111.3 506.2 L111.2 503.8 L109.9 501.1 L107.4 497.3 L108.5 495.6 L105.7 493.0 L103.5 489.7 L107.2 488.8 L106.6 485.7 L104.1 481.6 L102.9 480.3 L101.5 478.3 L98.5 478.6 L98.1 475.6 L94.4 474.9 L94.1 477.8 L91.8 477.8 L90.1 473.7 L86.2 470.0 L81.7 468.9 L78.0 469.6 L74.3 469.4 L73.8 474.8 L69.1 468.6 L71.6 463.0 L71.0 457.1 L64.3 463.4 L59.7 462.9 L58.7 466.9 L61.4 470.7 L57.1 469.2 L53.5 472.0 L47.8 466.9 L40.5 468.8 L36.8 474.2 L32.0 473.9 L30.8 478.9 L27.3 486.0 L24.7 483.8 L16.5 475.3 L12.3 476.8 L10.9 472.3 L4.0 471.8 L3.7 464.5 L2.5 456.3 L0.1 450.5 L4.0 444.4 L6.7 438.6 L12.1 432.5 L16.2 427.2 L18.5 420.1 L21.9 410.7 L26.3 404.7 L22.7 397.1 L22.4 391.6 L23.2 383.8 L25.4 371.8 L28.3 362.9 L30.3 354.2 L31.9 347.9 L36.7 340.5 L41.3 325.6 L41.7 315.8 L39.4 306.3 L44.3 293.8 L47.1 289.7 L50.2 283.7 L48.4 274.1 L41.0 263.3 L40.5 257.1 L38.3 249.8 L42.9 242.9 L48.0 237.0 L71.7 220.5 L74.7 201.7 L80.1 176.7 L88.7 144.7 L112.0 133.3 L126.6 116.2 L137.9 76.0 L141.1 66.7 L149.5 57.3 L168.4 45.9 L176.4 40.0 L211.1 16.1 L222.4 13.4 L239.0 8.5 L256.5 13.2 L281.2 8.4 L292.3 15.8 L303.0 14.1 L323.5 17.9 L333.5 22.8 L342.7 13.7 L346.4 1.7 L353.4 1.0 Z"/><g data-a="middle" data-dx="0" data-dy="-1.6" class="pin" style="--i:0" tabindex="0" role="button" aria-label="Paranavaí" data-ev="IFFA Festival" data-nome="Paranavaí" data-reg="Noroeste do Paraná" data-x="300" data-y="85"><circle class="halo" cx="300" cy="85" r="26"/><circle cx="300" cy="85" r="8"/><text x="316" y="73">Paranavaí</text></g><g data-a="start" data-dx="1.3" data-dy="0.35" class="pin" style="--i:1" tabindex="0" role="button" aria-label="Altônia" data-ev="Festival de Dança de Altônia" data-nome="Altônia" data-reg="Noroeste do Paraná" data-x="100" data-y="208"><circle class="halo" cx="100" cy="208" r="26"/><circle cx="100" cy="208" r="8"/><text x="116" y="196">Altônia</text></g><g data-a="end" data-dx="-1.3" data-dy="-0.9" class="pin" style="--i:2" tabindex="0" role="button" aria-label="Presidente Castelo Branco" data-ev="The King of Castle" data-nome="Presidente Castelo Branco" data-reg="Norte Central, perto de Maringá" data-x="344" data-y="117"><circle class="halo" cx="344" cy="117" r="26"/><circle cx="344" cy="117" r="8"/><text x="360" y="105">Presidente Castelo Branco</text></g><g data-a="end" data-dx="-1.3" data-dy="1.5" class="pin casa" style="--i:3" tabindex="0" role="button" aria-label="Maringá · Sarandi" data-ev="Soul Breaking (Maringá) · Bombox na Rua (Sarandi)" data-nome="Maringá · Sarandi" data-reg="Casa. Norte Central do Paraná" data-x="385" data-y="143"><circle class="halo" cx="385" cy="143" r="26"/><circle cx="385" cy="143" r="11"/><text x="401" y="131">Maringá · Sarandi</text></g><g data-a="start" data-dx="1.0" data-dy="1.6" class="pin" style="--i:4" tabindex="0" role="button" aria-label="Arapongas" data-ev="J-Beat Battle" data-nome="Arapongas" data-reg="Norte Central do Paraná" data-x="445" data-y="138"><circle class="halo" cx="445" cy="138" r="26"/><circle cx="445" cy="138" r="8"/><text x="461" y="126">Arapongas</text></g><g data-a="start" data-dx="1.2" data-dy="-0.6" class="pin" style="--i:5" tabindex="0" role="button" aria-label="Londrina" data-ev="Funk Me Battle" data-nome="Londrina" data-reg="Norte Central do Paraná" data-x="481" data-y="121"><circle class="halo" cx="481" cy="121" r="26"/><circle cx="481" cy="121" r="8"/><text x="497" y="109">Londrina</text></g><g data-a="start" data-dx="1.3" data-dy="0.35" class="pin" style="--i:6" tabindex="0" role="button" aria-label="Toledo" data-ev="Toledo em Dança" data-nome="Toledo" data-reg="Oeste do Paraná" data-x="122" data-y="339"><circle class="halo" cx="122" cy="339" r="26"/><circle cx="122" cy="339" r="8"/><text x="138" y="327">Toledo</text></g><g data-a="start" data-dx="1.3" data-dy="0.35" class="pin" style="--i:7" tabindex="0" role="button" aria-label="Cascavel" data-ev="Daring Battle" data-nome="Cascavel" data-reg="Oeste do Paraná" data-x="162" data-y="374"><circle class="halo" cx="162" cy="374" r="26"/><circle cx="162" cy="374" r="8"/><text x="178" y="362">Cascavel</text></g><g data-a="start" data-dx="1.3" data-dy="0.35" class="pin" style="--i:8" tabindex="0" role="button" aria-label="Curitiba" data-ev="Campeonato Paranaense" data-nome="Curitiba" data-reg="Capital" data-x="746" data-y="447"><circle class="halo" cx="746" cy="447" r="26"/><circle cx="746" cy="447" r="8"/><text x="762" y="435">Curitiba</text></g></g></svg></div>
+      <div class="mapa-ctrl"><button type="button" id="zoomMais" aria-label="Aproximar">+</button><button type="button" id="zoomMenos" aria-label="Afastar">−</button></div>
+      <div class="mapa-card" id="mapaCard" aria-live="polite"></div>
+    </div>
+    <div class="selo-logo pichando" id="seloLogo"><span class="nevoa"><img src="a/tag.png" alt=""></span><img class="traco" src="a/tag.png" alt=""></div>
+    <a class="selo-play" id="seloPlay" href="https://www.youtube.com/watch?v=dPK9dVAwSo0" aria-label="Assistir a DJ session no YouTube"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg><span>Assistir</span></a>
+  </div>
+</div>
+
+<div class="dica" id="dica" aria-hidden="true">Role</div>
+
+<nav class="indicador" id="indicador" aria-label="Faixas"></nav>
+<a class="selo-giro" id="seloGiro" href="https://instagram.com/djlarryvsn" aria-label="Chamar o DJ Larry na DM">
+  <svg viewBox="0 0 120 120" aria-hidden="true"><defs><path id="circ" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0"/></defs>
+    <text><textPath href="#circ">DJ LARRY • TOCA O BREAK • NO VINIL • </textPath></text></svg>
+  <span class="seta">↗</span>
+</a>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const disco = document.getElementById('disco');
+const raios = [...document.querySelectorAll('.raio')];
+const blocos = raios.map(r => r.firstElementChild);
+const N = raios.length, PASSO = 42; // degrees between blocks on the record
+const video = document.querySelector('.ft video');
+const fts = [...document.querySelectorAll('.ft')];
+const seloLogo = document.getElementById('seloLogo');
+const mapaSelo = document.getElementById('mapaSelo');
+
+
+/* lines per track */
+const linhas = blocos.map(b => [...b.querySelectorAll('.ln')]);
+
+/* indicator */
+const ind = document.getElementById('indicador');
+const nomes = ['Início', 'Som', 'Toca-discos', 'Trajetória', 'Cidades', 'Pilares', 'Contato'];
+const pontos = nomes.map((n, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.dataset.ir = i;
+  b.setAttribute('aria-label', `Faixa ${i + 1}: ${n}`); ind.append(b); return b;
+});
+
+/* one gesture = one action: the record turns to the next track on its own,
+   the photo dissolves and the lines rise one after another */
+let t = 0, atual = -1, ocupado = 0;
+const temas = ['escuro', 'coral', 'papel', 'escuro', 'escuro', 'escuro', 'coral'];
+const DUR = reduz ? 0 : 1150;
+const dica = document.getElementById('dica');
+let tween = { de: 0, para: 0, ini: 0 };
+function aplica(primeira) {
+  const alvo = t;
+  linhas.forEach((ls, i) => ls.forEach((el, j) => {
+    if (i === alvo) {
+      el.style.transitionDelay = reduz ? '0ms' : `${(primeira ? 200 : 420) + j * 140}ms`;
+      el.classList.add('on');
+    } else if (el.classList.contains('on')) {
+      // leaving lines stay while their block turns away, then reset quietly for next time
+      el.style.transitionDelay = '0ms';
+      setTimeout(() => { if (t !== i) el.classList.remove('on'); }, reduz ? 0 : 700);
+    }
+  }));
+  document.body.dataset.tema = temas[t];
+  if (t !== atual) {
+    atual = t;
+    blocos.forEach((b, j) => b.toggleAttribute('inert', j !== t));
+    fts.forEach((f, j) => f.classList.toggle('on', j === t));
+    pontos.forEach((b, j) => b.setAttribute('aria-current', j === t ? 'true' : 'false'));
+    if (video) { if (t === 5) video.play().catch(() => {}); else video.pause(); }
+  }
+  clearTimeout(aplica.mt);
+  mapaSelo.classList.remove('on');
+  if (t === 4) aplica.mt = setTimeout(() => { if (t === 4) mapaSelo.classList.add('on'); }, reduz ? 0 : 700);
+  seloLogo.classList.toggle('fora', t === 4 || t === 5);
+  document.getElementById('seloPlay').classList.toggle('on', t === 5);
+  dica.classList.toggle('some', t !== 0);
+  tween = { de: rot, para: t * PASSO, ini: performance.now() };
+  ocupado = performance.now() + DUR * 0.8;
+}
+function vaiPara(i) {
+  i = Math.max(0, Math.min(N - 1, i));
+  if (i === t) return false;
+  t = i; aplica(); return true;
+}
+const passo = dir => vaiPara(t + dir);
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-ir]'); if (!a) return;
+  e.preventDefault(); vaiPara(+a.dataset.ir);
+});
+
+/* input: a flick of the wheel, trackpad or finger fires one action */
+let acum = 0, ultimaRoda = 0, gastou = false;
+addEventListener('wheel', e => {
+  e.preventDefault();
+  const agora = performance.now();
+  if (agora - ultimaRoda > 180) { acum = 0; gastou = false; }
+  ultimaRoda = agora;
+  if (gastou || agora < ocupado) return;
+  acum += e.deltaY;
+  if (Math.abs(acum) > 20) { gastou = passo(Math.sign(acum)) || gastou; acum = 0; gastou = true; }
+}, { passive: false });
+let toqueY = null;
+addEventListener('touchstart', e => { if (e.touches.length === 1) toqueY = e.touches[0].clientY; }, { passive: true });
+addEventListener('touchmove', e => {
+  if (e.target.closest('a, button')) return;
+  e.preventDefault();
+  if (e.target.closest('.mapa-vp')) return;
+  if (toqueY === null || performance.now() < ocupado) return;
+  const d = toqueY - e.touches[0].clientY;
+  if (Math.abs(d) > 36) { passo(Math.sign(d)); toqueY = null; }
+}, { passive: false });
+addEventListener('touchend', () => { toqueY = null; });
+addEventListener('keydown', e => {
+  if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); passo(1); }
+  if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); passo(-1); }
+  if (e.key === 'Home') vaiPara(0);
+  if (e.key === 'End') vaiPara(N - 1);
+});
+
+/* dragging the record turns it a step at a time */
+let pegando = false, pid = null, ultimo = 0, giro = 0;
+function angulo(e) {
+  const r = disco.getBoundingClientRect();
+  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+}
+disco.addEventListener('pointerdown', e => {
+  if (pid !== null || e.pointerType === 'touch' || e.target.closest('a, button, .mapa-selo, .estilos')) return;
+  pid = e.pointerId; disco.setPointerCapture(pid); pegando = true; disco.classList.add('pega'); ultimo = angulo(e); giro = 0;
+});
+disco.addEventListener('pointermove', e => {
+  if (!pegando || e.pointerId !== pid) return;
+  const a = angulo(e); let d = a - ultimo; if (d > 180) d -= 360; if (d < -180) d += 360; ultimo = a;
+  giro += d; arrasto += d;
+  if (Math.abs(giro) > 22 && performance.now() > ocupado) { passo(Math.sign(giro)); giro = 0; }
+});
+const solta = e => { if (e.pointerId !== pid) return; pegando = false; pid = null; disco.classList.remove('pega'); arrasto = 0; };
+disco.addEventListener('pointerup', solta); disco.addEventListener('pointercancel', solta);
+
+/* motion: each action is one long ease-in-out turn */
+const sulcos = document.getElementById('sulcos');
+const giroSvg = document.querySelector('#seloGiro svg');
+let rot = 0, idle = 0, arrasto = 0, tAnt = performance.now();
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+function quadro(now) {
+  const dt = Math.min((now - tAnt) / 1000, 0.05); tAnt = now;
+  const k = DUR ? Math.min(1, (now - tween.ini) / DUR) : 1;
+  rot = tween.de + (tween.para - tween.de) * easeInOut(k);
+  if (!reduz) idle += dt * 10;
+  raios.forEach((r, i) => {
+    const a = rot - i * PASSO;
+    const o = Math.max(0, 1 - Math.abs(a) / (PASSO * 0.62));
+    if (o === 0) { if (r.style.visibility !== 'hidden') r.style.visibility = 'hidden'; return; }
+    if (r.style.visibility) r.style.visibility = '';
+    r.style.transform = `rotate(${a.toFixed(2)}deg)`;
+    blocos[i].style.opacity = o.toFixed(3);
+  });
+  fts.forEach((f, i) => {
+    const a = rot - i * PASSO;
+    if (Math.abs(a) > PASSO * 1.2) return;
+    const sc = f.classList.contains('recorte') ? 1 : 1.32 + Math.abs(a) * 0.002;
+    f.style.transform = `rotate(${(a * 0.32).toFixed(2)}deg) scale(${sc.toFixed(3)})`;
+  });
+  sulcos.style.transform = `rotate(${(rot + idle).toFixed(2)}deg)`;
+  giroSvg.style.transform = `rotate(${((rot + idle) * 1.4).toFixed(2)}deg)`;
+  seloLogo.style.transform = `translate(-50%, -50%) rotate(${(rot / PASSO * 360).toFixed(2)}deg)`;
+  requestAnimationFrame(quadro);
+}
+aplica(true);
+requestAnimationFrame(quadro);
+
+
+/* estilos */
+const textos = [
+  'O groove seco de guitarra, baixo e metais que ainda segura a roda. Quando o break entra, a pista inteira responde.',
+  'A voz e o swing que vieram antes de tudo. Muito break clássico foi garimpado em disco de soul.',
+  'A cultura que nasceu na festa de bairro, com o DJ no centro e a dança em volta.',
+  'O trecho só de bateria que o DJ estica alternando dois discos iguais. É ali que a roda pega fogo, e foi nesse pedaço que o b-boy ganhou o nome.',
+  'O lado mais macio da noite, pra respirar entre uma batalha e outra sem perder o balanço.'
+];
+const estiloBtns = [...document.querySelectorAll('.estilos button')], estiloTxt = document.getElementById('estiloTxt');
+estiloBtns.forEach(b => b.addEventListener('click', () => {
+  if (b.getAttribute('aria-pressed') === 'true') return;
+  estiloBtns.forEach(o => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
+}));
+
+/* mapa: zoom, arrastar, cidades */
+const mapaVp = document.getElementById('mapaVp'), mapaG = document.getElementById('mapaG'), mapaSvg = document.getElementById('mapaSvg');
+const card = document.getElementById('mapaCard');
+const pins = [...document.querySelectorAll('.pin')];
+let mz = 1.5, mx = 0, my = 0;
+function centraEm(x, y) { // svg coords → keep that point in the middle
+  const vb = mapaSvg.viewBox.baseVal, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2;
+  mx = (cx - x) * mz; my = (cy - y) * mz;
+}
+function desenhaMapa() {
+  const vb = mapaSvg.viewBox.baseVal, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2;
+  mapaG.setAttribute('transform', `translate(${cx + mx} ${cy + my}) scale(${mz}) translate(${-cx} ${-cy})`);
+  const u = vb.width / Math.max(1, mapaVp.clientWidth) / mz; // svg units per screen px
+  pins.forEach(p => {
+    const x = +p.dataset.x, y = +p.dataset.y, fs = 14 * u;
+    const [c0, c1] = p.querySelectorAll('circle'), tx = p.querySelector('text');
+    c0.setAttribute('r', 18 * u); c1.setAttribute('r', (p.classList.contains('casa') ? 8 : 6) * u);
+    c1.setAttribute('stroke-width', 2.5 * u);
+    tx.setAttribute('font-size', fs); tx.setAttribute('text-anchor', p.dataset.a);
+    tx.setAttribute('x', x + p.dataset.dx * fs); tx.setAttribute('y', y + p.dataset.dy * fs);
+  });
+}
+function escolhe(p) {
+  pins.forEach(o => o.classList.toggle('ativo', o === p));
+  card.innerHTML = `<b>${p.dataset.nome}</b>${p.dataset.ev ? `<strong>${p.dataset.ev}</strong>` : ''}<span>${p.dataset.reg}</span>`;
+}
+pins.forEach(p => {
+  p.addEventListener('click', e => { if (arrastouMapa) return; escolhe(p); });
+  p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolhe(p); } });
+});
+escolhe(pins.find(p => p.classList.contains('casa')));
+centraEm(430, 250); desenhaMapa(); addEventListener('resize', desenhaMapa);
+document.getElementById('zoomMais').addEventListener('click', () => { const r = Math.min(5, mz * 1.4) / mz; mz *= r; mx *= r; my *= r; desenhaMapa(); });
+document.getElementById('zoomMenos').addEventListener('click', () => { const r = Math.max(1, mz / 1.4) / mz; mz *= r; mx *= r; my *= r; desenhaMapa(); });
+let mpid = null, mIni = null, arrastouMapa = false;
+mapaVp.addEventListener('pointerdown', e => {
+  mpid = e.pointerId; mapaVp.setPointerCapture(mpid); mapaVp.classList.add('pega');
+  const k = mapaSvg.viewBox.baseVal.width / mapaVp.clientWidth;
+  mIni = { x: e.clientX, y: e.clientY, mx, my, k }; arrastouMapa = false;
+});
+mapaVp.addEventListener('pointermove', e => {
+  if (e.pointerId !== mpid) return;
+  const dx = e.clientX - mIni.x, dy = e.clientY - mIni.y;
+  if (Math.hypot(dx, dy) > 4) arrastouMapa = true;
+  mx = mIni.mx + dx * mIni.k; my = mIni.my + dy * mIni.k; desenhaMapa();
+});
+const soltaMapa = e => {
+  if (e.pointerId !== mpid) return; mpid = null; mapaVp.classList.remove('pega');
+  if (!arrastouMapa) { const p = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pin'); if (p) escolhe(p); }
+  setTimeout(() => arrastouMapa = false, 0);
+};
+mapaVp.addEventListener('pointerup', soltaMapa); mapaVp.addEventListener('pointercancel', soltaMapa);
+
+const toastEl = document.getElementById('toast'); let tt;
+function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 2200); }
+document.getElementById('copiar').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText('@djlarryvsn'); toast('@djlarryvsn copiado'); }
+  catch { toast('O @ é djlarryvsn'); }
+});
+</script>
+</body>
+</html>
