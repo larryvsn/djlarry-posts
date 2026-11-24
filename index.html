@@ -170,6 +170,8 @@ header .dm { font-size: 13px; color: var(--cinza); text-decoration: none; transi
   .linha-tempo li::before { left: -22px; top: 2px; width: 13px; height: 13px; }
   .linha-tempo li b { font-size: 15px; }
 }
+.pw { display: inline-block; will-change: transform, opacity; }
+.linha-tempo li, .estilos button, .midia, .painel, .arco { transition: none !important; transition-delay: 0s !important; }
 @media (prefers-reduced-motion: reduce) { .linha-tempo li { transform: none; } }
 
 
@@ -530,6 +532,32 @@ const mapaSelo = document.getElementById('mapaSelo');
 
 /* lines per track */
 const linhas = blocos.map(b => [...b.querySelectorAll('.ln')]);
+/* cada palavra (ou item) vira uma peça que entra no seu tempo durante o giro */
+function quebraPalavras(raiz) {
+  const pecas = [], w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  const nos = []; while (w.nextNode()) if (w.currentNode.nodeValue.trim()) nos.push(w.currentNode);
+  nos.forEach(n => {
+    const frag = document.createDocumentFragment();
+    n.nodeValue.split(/(\s+)/).forEach(parte => {
+      if (!parte) return;
+      if (/^\s+$/.test(parte)) { frag.append(parte); return; }
+      const sp = document.createElement('span'); sp.className = 'pw'; sp.textContent = parte; frag.append(sp); pecas.push(sp);
+    });
+    n.replaceWith(frag);
+  });
+  return pecas;
+}
+const pecas = linhas.map(ls => {
+  const lista = [];
+  ls.forEach(el => {
+    const itens = el.querySelectorAll('button, li, a.midia, a.painel, .arco, .mapa-selo, .mapa-ctrl');
+    if (el.tagName === 'DIV' && itens.length) itens.forEach(x => lista.push(x));
+    else lista.push(...quebraPalavras(el));
+    const sp = el.firstElementChild; if (sp && el.tagName !== 'DIV') { sp.style.transform = 'none'; sp.style.opacity = '1'; sp.style.transition = 'none'; }
+    el.classList.add('on');
+  });
+  return lista;
+});
 
 /* indicator */
 const ind = document.getElementById('indicador');
@@ -548,7 +576,7 @@ const dica = document.getElementById('dica');
 let tween = { de: 0, para: 0, ini: 0 };
 function aplica(primeira) {
   const alvo = t;
-  linhas.forEach((ls, i) => ls.forEach((el, j) => {
+  if (false) linhas.forEach((ls, i) => ls.forEach((el, j) => {
     if (i === alvo) {
       el.style.transitionDelay = reduz ? '0ms' : `${(primeira ? 200 : 420) + j * 140}ms`;
       el.classList.add('on');
@@ -562,7 +590,7 @@ function aplica(primeira) {
   if (t !== atual) {
     atual = t;
     blocos.forEach((b, j) => b.toggleAttribute('inert', j !== t));
-    fts.forEach((f, j) => f.classList.toggle('on', j === t));
+    fts.forEach((f, j) => f.classList.toggle('atual', j === t));
     pontos.forEach((b, j) => b.setAttribute('aria-current', j === t ? 'true' : 'false'));
     if (video) { if (t === 5) video.play().catch(() => {}); else video.pause(); }
   }
@@ -572,13 +600,11 @@ function aplica(primeira) {
   seloLogo.classList.toggle('fora', t === 4 || t === 5);
   document.getElementById('seloPlay').classList.toggle('on', t === 5);
   dica.classList.toggle('some', t !== 0);
-  tween = { de: rot, para: t * PASSO, ini: performance.now() };
-  ocupado = performance.now() + DUR * 0.8;
 }
 function vaiPara(i) {
   i = Math.max(0, Math.min(N - 1, i));
   if (i === t) return false;
-  t = i; aplica(); return true;
+  alvoRot = i * PASSO; ultimoInput = performance.now() - 1000; return true;
 }
 const passo = dir => vaiPara(t + dir);
 document.addEventListener('click', e => {
@@ -586,28 +612,26 @@ document.addEventListener('click', e => {
   e.preventDefault(); vaiPara(+a.dataset.ir);
 });
 
-/* input: a flick of the wheel, trackpad or finger fires one action */
-let acum = 0, ultimaRoda = 0, gastou = false;
+/* input contínuo: a roda, o trackpad e o dedo giram o disco junto, sem degraus */
+let alvoRot = 0, ultimoInput = 0, tocando = false, vel = 0;
+const MAXR = () => (N - 1) * PASSO;
+const giraPor = d => { alvoRot = Math.max(-6, Math.min(MAXR() + 6, alvoRot + d)); ultimoInput = performance.now(); };
 addEventListener('wheel', e => {
+  if (e.target.closest('.mapa-vp')) return;
   e.preventDefault();
-  const agora = performance.now();
-  if (agora - ultimaRoda > 180) { acum = 0; gastou = false; }
-  ultimaRoda = agora;
-  if (gastou || agora < ocupado) return;
-  acum += e.deltaY;
-  if (Math.abs(acum) > 20) { gastou = passo(Math.sign(acum)) || gastou; acum = 0; gastou = true; }
+  const px = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY;
+  giraPor(Math.max(-60, Math.min(60, px)) * 0.085);
 }, { passive: false });
-let toqueY = null;
-addEventListener('touchstart', e => { if (e.touches.length === 1) toqueY = e.touches[0].clientY; }, { passive: true });
+let toqueY = null, toqueT = 0;
+addEventListener('touchstart', e => { if (e.touches.length === 1) { toqueY = e.touches[0].clientY; toqueT = performance.now(); tocando = true; vel = 0; } }, { passive: true });
 addEventListener('touchmove', e => {
   if (e.target.closest('a, button')) return;
   e.preventDefault();
-  if (e.target.closest('.mapa-vp')) return;
-  if (toqueY === null || performance.now() < ocupado) return;
-  const d = toqueY - e.touches[0].clientY;
-  if (Math.abs(d) > 36) { passo(Math.sign(d)); toqueY = null; }
+  if (e.target.closest('.mapa-vp') || toqueY === null) return;
+  const y = e.touches[0].clientY, d = toqueY - y, now = performance.now();
+  giraPor(d * 0.16); vel = d * 0.16 / Math.max(8, now - toqueT) * 16; toqueY = y; toqueT = now;
 }, { passive: false });
-addEventListener('touchend', () => { toqueY = null; });
+addEventListener('touchend', () => { toqueY = null; tocando = false; });
 addEventListener('keydown', e => {
   if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); passo(1); }
   if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); passo(-1); }
@@ -628,8 +652,7 @@ disco.addEventListener('pointerdown', e => {
 disco.addEventListener('pointermove', e => {
   if (!pegando || e.pointerId !== pid) return;
   const a = angulo(e); let d = a - ultimo; if (d > 180) d -= 360; if (d < -180) d += 360; ultimo = a;
-  giro += d; arrasto += d;
-  if (Math.abs(giro) > 22 && performance.now() > ocupado) { passo(Math.sign(giro)); giro = 0; }
+  giraPor(d);
 });
 const solta = e => { if (e.pointerId !== pid) return; pegando = false; pid = null; disco.classList.remove('pega'); arrasto = 0; };
 disco.addEventListener('pointerup', solta); disco.addEventListener('pointercancel', solta);
@@ -641,8 +664,15 @@ let rot = 0, idle = 0, arrasto = 0, tAnt = performance.now();
 const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 function quadro(now) {
   const dt = Math.min((now - tAnt) / 1000, 0.05); tAnt = now;
-  const k = DUR ? Math.min(1, (now - tween.ini) / DUR) : 1;
-  rot = tween.de + (tween.para - tween.de) * easeInOut(k);
+  // inércia do dedo, depois um encaixe suave no bloco mais próximo
+  if (!tocando && Math.abs(vel) > 0.05) { giraPor(vel); vel *= 0.92; }
+  if (!tocando && now - ultimoInput > 240) {
+    const enc = Math.round(alvoRot / PASSO) * PASSO;
+    alvoRot += (Math.max(0, Math.min(MAXR(), enc)) - alvoRot) * 0.1;
+  }
+  rot += (alvoRot - rot) * (reduz ? 1 : Math.min(1, dt * 9));
+  const tn = Math.max(0, Math.min(N - 1, Math.round(rot / PASSO)));
+  if (tn !== t) { t = tn; aplica(); }
   if (!reduz) idle += dt * 10;
   raios.forEach((r, i) => {
     const a = rot - i * PASSO;
@@ -651,6 +681,24 @@ function quadro(now) {
     if (r.style.visibility) r.style.visibility = '';
     r.style.transform = `rotate(${a.toFixed(2)}deg)`;
     blocos[i].style.opacity = o.toFixed(3);
+  });
+  // revelação contínua: cada linha e cada foto acompanham o giro
+  const cl = x => Math.max(0, Math.min(1, x));
+  pecas.forEach((lista, i) => {
+    const p = 1 - Math.abs(rot - i * PASSO) / PASSO; // 1 = bloco no lugar
+    if (p <= 0 && lista._z) return;
+    lista._z = p <= 0;
+    const n = Math.max(1, lista.length - 1);
+    lista.forEach((el, k) => {
+      const q = reduz ? (p > .5 ? 1 : 0) : cl((p - 0.22 - 0.58 * k / n) / 0.16);
+      el.style.opacity = q.toFixed(3);
+      el.style.transform = q >= 1 ? '' : `translateY(${((1 - q) * 0.6).toFixed(2)}em)`;
+    });
+  });
+  fts.forEach((f, i) => {
+    const p = cl(1 - Math.abs(rot - i * PASSO) / (PASSO * 0.75));
+    f.style.transition = 'none';
+    f.style.opacity = (p * p * (3 - 2 * p)).toFixed(3);
   });
   fts.forEach((f, i) => {
     const a = rot - i * PASSO;
